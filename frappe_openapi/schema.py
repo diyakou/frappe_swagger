@@ -294,7 +294,12 @@ def python_type_to_schema(type_hint: Any) -> dict:
 	if type_hint is date:
 		return {"type": "string", "format": "date"}
 	if type_hint in {dict, frappe._dict}:
-		return {"type": "object", "additionalProperties": True}
+		return {
+			"type": "object",
+			"description": "Dictionary of key-value pairs.",
+			"example": {"key": "value"},
+			"additionalProperties": True,
+		}
 	if type_hint in {list, tuple, set}:
 		return {"type": "array", "items": {}}
 
@@ -304,7 +309,12 @@ def python_type_to_schema(type_hint: Any) -> dict:
 		item_type = args[0] if args else Any
 		return {"type": "array", "items": python_type_to_schema(item_type)}
 	if origin is dict:
-		return {"type": "object", "additionalProperties": True}
+		return {
+			"type": "object",
+			"description": "Dictionary of key-value pairs.",
+			"example": {"key": "value"},
+			"additionalProperties": True,
+		}
 	if origin is type(None):
 		return {"type": "null"}
 	if args and type(None) in args:

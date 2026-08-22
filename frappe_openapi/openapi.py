@@ -1,4 +1,5 @@
 import inspect
+import re
 from typing import Any, get_type_hints
 
 import frappe
@@ -1142,12 +1143,100 @@ def doc_controller_method_operation(doctype: str, method: dict, http_method: str
 	return operation
 
 
+def parse_docstring_parameters(docstring: str | None) -> tuple[str, dict[str, str]]:
+	if not docstring:
+		return "", {}
+
+	lines = docstring.strip().splitlines()
+	summary_lines = []
+	param_descriptions = {}
+	in_params_section = False
+	current_param = None
+	current_desc_lines = []
+
+	def flush_param():
+		nonlocal current_param, current_desc_lines
+		if current_param:
+			param_descriptions[current_param] = " ".join(current_desc_lines).strip()
+			current_param = None
+			current_desc_lines = []
+
+	for line in lines:
+		stripped = line.strip()
+		if (stripped.startswith(":param ") or stripped.startswith("@param ")) and ":" in stripped[7:]:
+			flush_param()
+			in_params_section = True
+			parts = stripped.split(":", 2)
+			param_name = parts[1].replace("param", "").strip()
+			param_desc = parts[2].strip() if len(parts) > 2 else ""
+			current_param = param_name
+			if param_desc:
+				current_desc_lines.append(param_desc)
+		elif stripped.startswith(":returns:") or stripped.startswith(":return:") or stripped.startswith(":rtype:"):
+			flush_param()
+			in_params_section = True
+		elif stripped.lower() in {"args:", "parameters:", "arguments:"}:
+			flush_param()
+			in_params_section = True
+		elif in_params_section:
+			if ":" in stripped and not stripped.startswith(":"):
+				match = re.match(r"^([a-zA-Z_]\w*)\s*(?:\([^)]*\))?\s*:\s*(.*)$", stripped)
+				if match:
+					flush_param()
+					current_param = match.group(1)
+					if match.group(2):
+						current_desc_lines.append(match.group(2).strip())
+					continue
+			if current_param and stripped and not stripped.startswith(":"):
+				current_desc_lines.append(stripped)
+		else:
+			summary_lines.append(stripped)
+
+	flush_param()
+	summary = "\n".join(summary_lines).strip()
+	return summary, param_descriptions
+
+
+def enhance_parameter_schema(name: str, schema: dict, doc_description: str | None = None) -> dict:
+	schema = schema.copy()
+
+	if doc_description:
+		schema["description"] = doc_description
+
+	is_object = schema.get("type") == "object" or schema.get("additionalProperties") is True
+	is_filter_param = (
+		name in {"filters", "filters_config"}
+		or name.endswith("_filters")
+		or name.startswith("filter")
+	)
+
+	if is_filter_param:
+		if "description" not in schema:
+			schema["description"] = 'Dictionary of field filter conditions (e.g. {"status": "Open"}).'
+		if "example" not in schema:
+			schema["example"] = {"status": "Open"}
+		if not is_object:
+			schema["type"] = "object"
+			schema["additionalProperties"] = True
+
+	elif is_object and "example" not in schema:
+		schema["example"] = {"key": "value"}
+		if "description" not in schema:
+			schema["description"] = "Dictionary of key-value pairs."
+
+	return schema
+
+
 def build_method_operation(method: str, method_obj, http_method: str, allow_guest: bool = False) -> dict:
 	signature = inspect.signature(method_obj)
 	try:
 		type_hints = get_type_hints(method_obj)
 	except Exception:
 		type_hints = {}
+
+	docstring = inspect.getdoc(method_obj)
+	summary, param_docs = parse_docstring_parameters(docstring)
+
 	parameters = []
 	body_properties = {}
 	required_body_fields = []
@@ -1159,14 +1248,28 @@ def build_method_operation(method: str, method_obj, http_method: str, allow_gues
 		}:
 			continue
 
-		schema = python_type_to_schema(type_hints.get(name, str))
+		type_hint = type_hints.get(name)
+		if type_hint is None:
+			if parameter.default is not inspect.Parameter.empty and parameter.default is not None:
+				type_hint = type(parameter.default)
+			elif name in {"filters", "filters_config"} or name.endswith("_filters") or name.startswith("filter"):
+				type_hint = dict
+			else:
+				type_hint = str
+
+		schema = python_type_to_schema(type_hint)
+		schema = enhance_parameter_schema(name, schema, param_docs.get(name))
+
 		if http_method == "GET":
-			parameters.append({
+			param_dict = {
 				"name": name,
 				"in": "query",
 				"required": parameter.default is inspect.Parameter.empty,
 				"schema": schema,
-			})
+			}
+			if "description" in schema:
+				param_dict["description"] = schema.pop("description")
+			parameters.append(param_dict)
 		else:
 			body_properties[name] = schema
 			if parameter.default is inspect.Parameter.empty:
@@ -1174,7 +1277,7 @@ def build_method_operation(method: str, method_obj, http_method: str, allow_gues
 
 	operation = {
 		"operationId": method.replace(".", "_"),
-		"summary": method,
+		"summary": summary or method,
 		"parameters": parameters,
 		"responses": standard_responses(python_type_to_schema(type_hints.get("return", dict))),
 		"x-frappe-whitelisted-method": method,
