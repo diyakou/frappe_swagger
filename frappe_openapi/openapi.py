@@ -1211,18 +1211,20 @@ def enhance_parameter_schema(name: str, schema: dict, doc_description: str | Non
 	)
 
 	if is_filter_param:
-		if "description" not in schema:
-			schema["description"] = 'Dictionary of field filter conditions (e.g. {"status": "Open"}).'
-		if "example" not in schema:
-			schema["example"] = {"status": "Open"}
+		schema["description"] = (
+			doc_description
+			or 'Dictionary of field filter conditions. Key is the DocType fieldname (e.g. "customer"), and value is the filter value (e.g. "CUST-00001" or ["docstatus", "=", 1]).'
+		)
+		schema["example"] = {"customer": "CUST-00001", "docstatus": 1}
 		if not is_object:
 			schema["type"] = "object"
 			schema["additionalProperties"] = True
 
-	elif is_object and "example" not in schema:
-		schema["example"] = {"key": "value"}
-		if "description" not in schema:
+	elif is_object:
+		if "description" not in schema or schema["description"] == "Dictionary of key-value pairs.":
 			schema["description"] = "Dictionary of key-value pairs."
+		if "example" not in schema or schema["example"] == {"key": "value"}:
+			schema["example"] = {"fieldname": "value"}
 
 	return schema
 
