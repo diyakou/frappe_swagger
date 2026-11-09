@@ -1,14 +1,24 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from frappe_openapi.generator import build_app_bundle, generate_app_bundles
+from frappe_openapi.generator import build_app_bundle, generate_app_bundles, now_utc
 
 
 class TestGeneratedOpenAPISpecs(TestCase):
+	def test_generation_timestamp_is_utc(self):
+		before = datetime.now(timezone.utc)
+		timestamp = now_utc()
+		after = datetime.now(timezone.utc)
+		self.assertTrue(timestamp.endswith("Z"))
+		parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+		self.assertLessEqual(before, parsed)
+		self.assertLessEqual(parsed, after)
+
 	def test_generate_app_bundles_writes_manifest_and_bundle(self):
 		with TemporaryDirectory() as output:
 			with (

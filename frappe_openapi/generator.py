@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -243,4 +243,4 @@ def get_app_version(app: str) -> str | None:
 
 
 def now_utc() -> str:
-	return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+	return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

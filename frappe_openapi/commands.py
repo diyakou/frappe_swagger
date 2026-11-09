@@ -4,7 +4,6 @@ import click
 import frappe
 from frappe.commands import pass_context
 from frappe.exceptions import SiteNotSpecifiedError
-from frappe.utils.bench_helper import CliCtxObj
 
 from frappe_openapi.generator import generate_app_bundles
 from frappe_openapi.registry import get_installed_apps
@@ -19,7 +18,7 @@ from frappe_openapi.registry import get_installed_apps
 	help="Directory for generated artifacts. Defaults to the current site's private/openapi directory.",
 )
 @pass_context
-def generate_openapi(context: CliCtxObj, apps: tuple[str, ...], all_apps: bool = False, output: Path | None = None):
+def generate_openapi(context, apps: tuple[str, ...], all_apps: bool = False, output: Path | None = None):
 	"Generate site-aware OpenAPI bundles for SDKs and publication."
 	if not context.sites:
 		raise SiteNotSpecifiedError

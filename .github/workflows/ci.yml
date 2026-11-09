@@ -11,6 +11,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check Python syntax
+        run: python -m compileall -q frappe_openapi
+      - name: Build and install package
+        run: |
+          python -m pip install 'flit_core>=3.4,<4'
+          python -m pip install --no-build-isolation --no-deps .
+          python -c 'import frappe_openapi; print(frappe_openapi.__version__)'
+
   tests:
     runs-on: ubuntu-latest
     strategy:

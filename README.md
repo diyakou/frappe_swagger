@@ -6,10 +6,39 @@ Dynamic OpenAPI spec for Frappe Framework apps
 
 You can install this app using the [bench](https://github.com/frappe/bench) CLI:
 
+Python 3.10 or newer is required. The repository is named `frappe_swagger`,
+but the Python package and Bench app are named `frappe_openapi`. Pass the app
+name explicitly so Bench uses the expected directory:
+
 ```bash
 cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app frappe_openapi
+bench get-app frappe_openapi https://github.com/diyakou/frappe_swagger --branch develop
+bench --site YOUR_SITE install-app frappe_openapi
+```
+
+If installation stopped after cloning, keep the existing checkout. Locate its
+`pyproject.toml` under `apps/frappe_openapi` or `apps/frappe_swagger` and use that
+directory for the editable install. For example, if it is under `apps/frappe_swagger`:
+
+```bash
+env/bin/python -m pip install -e ./apps/frappe_swagger
+```
+
+If pip cannot download build dependencies because of a proxy error, repair the
+server's proxy settings. If `flit_core>=3.4,<4` is already installed in the Bench
+environment, the editable install can instead reuse it:
+
+```bash
+env/bin/python -m pip show flit_core
+env/bin/python -m pip install --no-build-isolation -e ./apps/frappe_swagger
+```
+
+Then finish the Bench setup (use the internal app name):
+
+```bash
+bench setup requirements
+bench build --app frappe_openapi
+bench --site YOUR_SITE install-app frappe_openapi
 ```
 
 ### Usage
