@@ -7,14 +7,14 @@ PRIVILEGED_SPEC_ROLES = {"System Manager", "Developer"}
 
 
 def is_swagger_ui_enabled() -> bool:
-	enabled = frappe.get_single_value(OPENAPI_SETTINGS_DOCTYPE, "enable_swagger_ui")
+	enabled = frappe.db.get_single_value(OPENAPI_SETTINGS_DOCTYPE, "enable_swagger_ui")
 	if enabled is None:
 		enabled = 1
 	return bool(cint(enabled))
 
 
 def get_spec_access_for() -> str:
-	return frappe.get_single_value(OPENAPI_SETTINGS_DOCTYPE, "allow_spec_access_for") or DEFAULT_SPEC_ACCESS_FOR
+	return frappe.db.get_single_value(OPENAPI_SETTINGS_DOCTYPE, "allow_spec_access_for") or DEFAULT_SPEC_ACCESS_FOR
 
 
 def has_openapi_spec_access(user: str | None = None) -> bool:

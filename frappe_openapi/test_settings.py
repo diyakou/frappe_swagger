@@ -15,11 +15,18 @@ class TestOpenAPISettings(TestCase):
 			return None
 
 		with (
-			patch.object(openapi_settings.frappe, "get_single_value", get_single_value),
+			patch.object(openapi_settings.frappe.db, "get_single_value", get_single_value),
 			patch.object(openapi_settings.frappe, "session", SimpleNamespace(user=user), create=True),
 			patch.object(openapi_settings.frappe, "get_roles", return_value=roles),
 		):
 			return openapi_settings.has_openapi_spec_access()
+
+	def test_swagger_ui_enabled_setting(self):
+		for value, expected in [(None, True), (0, False), (1, True), ("0", False), ("1", True)]:
+			with self.subTest(value=value):
+				with patch.object(openapi_settings.frappe.db, "get_single_value", return_value=value) as get_value:
+					self.assertEqual(openapi_settings.is_swagger_ui_enabled(), expected)
+				get_value.assert_called_once_with("OpenAPI Settings", "enable_swagger_ui")
 
 	def test_default_spec_access_is_limited_to_privileged_users(self):
 		self.assertTrue(self.has_access(None, "manager@example.com", ["System Manager"]))
