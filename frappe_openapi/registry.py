@@ -6,13 +6,25 @@ from pathlib import Path
 
 import frappe
 from frappe.model.base_document import get_controller
-from frappe.modules.utils import get_doctype_app_map
 from frappe.utils.caching import site_cache
 
 REGISTRY_CACHE_TTL = 300
 DEFAULT_WHITELIST_HTTP_METHODS = ["POST"]
 OPENAPI_HTTP_METHODS = {"GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"}
 DOC_METHOD_HTTP_METHODS = {"GET", "POST"}
+
+
+@site_cache(ttl=REGISTRY_CACHE_TTL)
+def get_doctype_app_map() -> dict[str, str | None]:
+	"""Resolve app ownership without depending on newer Frappe module helpers."""
+	module_apps = {
+		module.name: module.app_name
+		for module in frappe.get_all("Module Def", fields=["name", "app_name"])
+	}
+	return {
+		doctype.name: module_apps.get(doctype.module)
+		for doctype in frappe.get_all("DocType", fields=["name", "module"])
+	}
 
 
 @site_cache(ttl=REGISTRY_CACHE_TTL)

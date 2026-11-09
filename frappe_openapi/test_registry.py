@@ -1,7 +1,21 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
-from frappe_openapi.registry import classify_method_file
+from frappe_openapi.registry import classify_method_file, get_doctype_app_map
+
+
+class TestDocTypeAppMap(TestCase):
+	def test_app_ownership_uses_module_and_keeps_unmapped_doctypes(self):
+		modules = [SimpleNamespace(name="Accounts", app_name="erpnext")]
+		doctypes = [
+			SimpleNamespace(name="Sales Invoice", module="Accounts"),
+			SimpleNamespace(name="Custom Record", module="Missing Module"),
+		]
+		with patch("frappe_openapi.registry.frappe.get_all", side_effect=[modules, doctypes]):
+			result = get_doctype_app_map.__wrapped__()
+		self.assertEqual(result, {"Sales Invoice": "erpnext", "Custom Record": None})
 
 
 class TestMethodClassification(TestCase):
