@@ -56,7 +56,7 @@ class TestDocTypeOpenAPI(TestCase):
 
 		with (
 			patch.object(openapi.frappe, "get_meta", return_value=meta),
-			patch.object(openapi.frappe, "override_whitelisted_method", side_effect=lambda method: method),
+			patch("frappe_openapi.openapi.override_whitelisted_method", side_effect=lambda method: method),
 			patch.object(openapi.frappe, "get_attr", return_value=self.file_method),
 			patch("frappe_openapi.openapi.get_app_for_doctype", return_value="erpnext"),
 			patch("frappe_openapi.openapi.get_doctype_whitelisted_methods", return_value=[]),

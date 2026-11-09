@@ -6,6 +6,7 @@ import frappe
 from frappe.utils.caching import redis_cache
 from werkzeug.exceptions import NotFound
 
+from frappe_openapi.compat import override_whitelisted_method
 from frappe_openapi.refs import (
 	JSON_SCHEMA_DIALECT,
 	OPENAPI_JSON_SCHEMA_DIALECT,
@@ -662,7 +663,7 @@ def build_methods_index_spec() -> dict:
 
 @redis_cache(ttl=SPEC_CACHE_TTL)
 def build_method_spec(method: str) -> dict:
-	resolved_method = frappe.override_whitelisted_method(method)
+	resolved_method = override_whitelisted_method(method)
 	method_obj = frappe.get_attr(resolved_method)
 	method_path = f"/api/v2/method/{method}"
 	operations = {}
@@ -980,7 +981,7 @@ def build_doctype_file_method_paths(doctype: str, file_methods: list[dict]) -> d
 
 
 def build_doctype_file_method_path_item(doctype: str, method: dict) -> dict:
-	resolved_method = frappe.override_whitelisted_method(method["name"])
+	resolved_method = override_whitelisted_method(method["name"])
 	method_obj = frappe.get_attr(resolved_method)
 	path_item = {}
 	for http_method in method["http_methods"]:
